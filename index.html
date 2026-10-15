@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#14181c">
+<title>Taupunkt-Anzeige</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<!--
+  Taupunktlüftung – Anzeige über Bluetooth LE (nur lesen)
+  @christian singerl | passend zur Zentrale ab V0.9
+  Android: Chrome | iPhone/iPad: Browser „Bluefy“ (Safari kann kein Bluetooth)
+  Einstellungen nur über die Web-App der Zentrale (WLAN „TaupunktNetz“).
+-->
+<style>
+:root{--bg:#14181c;--card:#1e242a;--text:#e6e9ec;--muted:#8a949e;--line:#2a3138}
+body{font-family:system-ui,sans-serif;margin:0;padding:16px;background:var(--bg);color:var(--text)}
+.card{background:var(--card);border-radius:12px;padding:14px;margin:0 auto 12px;max-width:520px}
+h1{font-size:1.25rem;text-align:center;margin:4px 0 12px}h2{font-size:1rem;margin:0 0 8px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:3px 0}
+.badge{padding:2px 10px;border-radius:99px;font-weight:600;color:#fff}
+.on{background:#2e9e5b}.off{background:#8a949e}
+.warn{color:#ff8a8a}.ok{color:#6fd39a}
+button{background:#2f6fd0;color:#fff;cursor:pointer;padding:10px 16px;border:0;border-radius:8px;font-size:1rem;width:100%}
+button:disabled{opacity:.4;cursor:default}
+.empf{text-align:center;color:#fff}
+.empf-t{font-size:1.7rem;font-weight:700}
+.empf-s{opacity:.92;margin-top:4px;font-size:.9rem}
+.empf.lueften{background:#2e9e5b}.empf.nicht{background:#d64545}
+.empf.kalt{background:#2f6fd0}.empf.keine_daten{background:#d98a1f}
+.alarm{background:#7a1f5c}
+#status{text-align:center;color:var(--muted);margin-top:8px;font-size:.9rem}
+small{display:block;text-align:center;color:var(--muted);margin-top:8px}
+</style>
+</head>
+<body>
+<h1>Taupunktlüftung</h1>
+<div class="card"><button id="btn" onclick="verbinden()">Mit Zentrale verbinden (Bluetooth)</button><div id="status">nicht verbunden</div></div>
+<div id="daten" style="display:none">
+<div id="empf" class="card empf keine_daten"><div id="empf_t" class="empf-t">–</div><div id="empf_s" class="empf-s"></div></div>
+<div id="hinweise"></div>
+<div class="card"><h2>Status</h2>
+<div class="row"><span>Funktion</span><b id="funk">–</b></div>
+<div class="row"><span>Betriebsart</span><b id="modus">–</b></div>
+<div class="row"><span>Ablauf</span><b id="ablauf">–</b></div>
+<div class="row"><span>Lüfter</span><span id="fan" class="badge off">–</span></div>
+<div class="row"><span>Fenster</span><b id="fenster">–</b></div>
+<div class="row"><span>Pause</span><b id="pause">–</b></div>
+<div class="row"><span>Taupunktdifferenz</span><b id="diff">–</b></div></div>
+<div class="card"><h2>Innen</h2>
+<div class="row"><span>Temperatur</span><b id="ti">–</b></div>
+<div class="row"><span>Feuchte</span><b id="hi">–</b></div>
+<div class="row"><span>Taupunkt</span><b id="di">–</b></div>
+<div class="row"><span>Abs. Feuchte</span><b id="ai">–</b></div>
+<div class="row"><span>Sensor</span><b id="iq">–</b></div></div>
+<div class="card"><h2>Außen</h2>
+<div class="row"><span>Temperatur</span><b id="ta">–</b></div>
+<div class="row"><span>Feuchte</span><b id="ha">–</b></div>
+<div class="row"><span>Taupunkt</span><b id="da">–</b></div>
+<div class="row"><span>Abs. Feuchte</span><b id="aa">–</b></div></div>
+<div id="schk" class="card"><h2>Schimmelwarnung</h2>
+<div class="row"><span>Wandtemperatur</span><b id="tw">–</b></div>
+<div class="row"><span>Feuchte an der Wand</span><b id="hw">–</b></div>
+<div class="row"><span>Schimmelgefahr</span><b id="sgef">–</b></div>
+<div class="row"><span>Alarm</span><b id="salarm">–</b></div></div>
+<div class="card"><h2>Wohlfühlklima (innen)</h2>
+<div class="row"><span>Aktuell</span><b id="kist">–</b></div>
+<div class="row"><span>Lüftung heute</span><b id="klauf">–</b></div>
+<div class="row"><span>Warnung</span><b id="kwarn">–</b></div></div>
+<div class="card"><h2>Luftentfeuchter</h2>
+<div class="row"><span>Zustand</span><b id="ez">–</b></div>
+<div class="row"><span>Hinweis</span><b id="ehw">–</b></div></div>
+<div class="card"><h2>Brauchwasserwärmepumpe</h2>
+<div class="row"><span>Temperatur BWP-Fühler</span><b id="tb">–</b></div>
+<div class="row"><span>BWP</span><b id="bwp">–</b></div></div>
+<div class="card"><h2>Zentrale</h2>
+<div class="row"><span>Uhrzeit</span><b id="zeit">–</b></div>
+<div class="row"><span>Version</span><b id="ver">–</b></div></div>
+</div>
+<small>Nur Anzeige – Einstellungen über die Web-App der Zentrale (WLAN „TaupunktNetz“)<br>@christian singerl</small>
+<script>
+const SVC = '6b8e0001-4f3a-4c1e-9d2a-7a1c5e0b9f10';
+const CHR = '6b8e0002-4f3a-4c1e-9d2a-7a1c5e0b9f10';
+const $ = i => document.getElementById(i);
+const f = (v, u) => (v === null || v === undefined) ? '–' : v.toFixed(1) + ' ' + u;
+let geraet = null, kennlinie = null, timer = null, gewollt = false;
+
+if (!navigator.bluetooth) {
+  $('btn').disabled = true;
+  $('status').innerHTML = 'Dieser Browser kann kein Bluetooth.<br>Android: Chrome verwenden – iPhone/iPad: App „Bluefy“ verwenden.';
+}
+
+async function verbinden() {
+  try {
+    if (!geraet) {
+      geraet = await navigator.bluetooth.requestDevice({
+        filters: [{ services: [SVC] }, { name: 'Taupunkt-Zentrale' }],
+        optionalServices: [SVC]
+      });
+      geraet.addEventListener('gattserverdisconnected', getrennt);
+    }
+    gewollt = true;
+    $('status').textContent = 'verbinde …';
+    const srv = await geraet.gatt.connect();
+    kennlinie = await (await srv.getPrimaryService(SVC)).getCharacteristic(CHR);
+    $('status').textContent = 'verbunden mit ' + (geraet.name || 'Zentrale');
+    $('btn').textContent = 'Trennen';
+    $('btn').onclick = trennen;
+    await lesen();
+    clearInterval(timer);
+    timer = setInterval(lesen, 5000);
+  } catch (e) {
+    $('status').textContent = 'Verbindung fehlgeschlagen: ' + e.message;
+  }
+}
+
+function trennen() {
+  gewollt = false;
+  clearInterval(timer);
+  if (geraet && geraet.gatt.connected) geraet.gatt.disconnect();
+  $('btn').textContent = 'Mit Zentrale verbinden (Bluetooth)';
+  $('btn').onclick = verbinden;
+  $('status').textContent = 'nicht verbunden';
+}
+
+function getrennt() {
+  clearInterval(timer);
+  if (!gewollt) return;
+  $('status').textContent = 'Verbindung verloren – neuer Versuch in 3 s …';
+  setTimeout(() => { if (gewollt) verbinden(); }, 3000);
+}
+
+async function lesen() {
+  if (!kennlinie) return;
+  try {
+    const v = await kennlinie.readValue();
+    anzeigen(JSON.parse(new TextDecoder().decode(v)));
+  } catch (e) {
+    $('status').textContent = 'Lesefehler: ' + e.message;
+  }
+}
+
+function zeile(text, klasse) {
+  return '<div class="card ' + (klasse || '') + '" style="color:#fff;text-align:center;font-weight:600">' + text + '</div>';
+}
+
+function anzeigen(s) {
+  $('daten').style.display = '';
+  const E = { lueften: 'Jetzt Lüften', nicht: 'Jetzt nicht Lüften', kalt: 'Zu kalt', keine_daten: 'Keine Daten' };
+  $('empf').className = 'card empf ' + s.e;
+  $('empf_t').textContent = E[s.e] || '–';
+  let sub = 'Sensordaten fehlen';
+  if (s.e === 'lueften') sub = 'Außen ist der Taupunkt ' + Math.abs(s.dd).toFixed(1) + ' °C niedriger' + (s.p ? ' – Pause bis ' + s.p : '');
+  else if (s.e === 'nicht') sub = 'Taupunktdifferenz ' + f(s.dd, '°C');
+  else if (s.e === 'kalt') sub = 'Innen ' + f(s.ti, '°C') + ' (Frostschutz: Start ab ' + f(s.fs, '°C') + ')';
+  $('empf_s').textContent = sub;
+
+  let h = '';
+  if (s.fe) h += zeile('Fehler an der Zentrale – bitte Web-App prüfen', 'empf nicht');
+  if (s.sa) h += zeile('SCHIMMELALARM – an der Zentrale quittieren', 'alarm');
+  if (s.eh) h += zeile('Luftentfeuchter: ' + s.eh, 'empf keine_daten');
+  if (s.iq === 2) h += zeile('Innensensor extern fehlt – Sensor der Zentrale wird verwendet', 'empf keine_daten');
+  $('hinweise').innerHTML = h;
+
+  $('funk').textContent = s.fk ? 'BWP' : 'Taupunktlüftung';
+  $('modus').textContent = s.m;
+  $('ablauf').textContent = s.a;
+  $('fan').textContent = s.lu ? 'EIN' : 'AUS';
+  $('fan').className = 'badge ' + (s.lu ? 'on' : 'off');
+  $('fenster').textContent = s.fo ? 'offen' : 'geschlossen';
+  $('pause').textContent = s.pr > 0 ? 'bis ' + (s.p || '?') + ' (noch ' + s.pr + ' min)' : 'keine';
+  $('diff').textContent = f(s.dd, '°C');
+  $('ti').textContent = f(s.ti, '°C'); $('hi').textContent = f(s.hi, '%');
+  $('di').textContent = f(s.di, '°C'); $('ai').textContent = f(s.ai, 'g/m³');
+  $('iq').textContent = ['Sensor Zentrale', 'Innensensor extern', 'Sensor Zentrale (Ersatz)'][s.iq] || '–';
+  $('iq').className = s.iq === 2 ? 'warn' : '';
+  $('ta').textContent = f(s.ta, '°C'); $('ha').textContent = f(s.ha, '%');
+  $('da').textContent = f(s.da, '°C'); $('aa').textContent = f(s.aa, 'g/m³');
+  $('tw').textContent = f(s.tw, '°C'); $('hw').textContent = f(s.hw, '%');
+  $('sgef').textContent = s.sg ? 'JA' : 'nein'; $('sgef').className = s.sg ? 'warn' : 'ok';
+  $('salarm').textContent = s.sa ? 'ALARM' : 'keiner'; $('salarm').className = s.sa ? 'warn' : '';
+  $('schk').className = 'card' + (s.sa ? ' alarm' : '');
+  $('kist').textContent = s.ko ? 'im Wohlfühlklima' : (s.hi > 65 ? 'zu feucht' : (s.hi === null ? 'keine Daten' : 'zu trocken'));
+  $('kist').className = s.ko ? 'ok' : 'warn';
+  $('klauf').textContent = s.lh + ' min' + (s.tg ? ' von ' + s.tg + ' min' : ' (kein Limit)');
+  $('kwarn').textContent = s.kw ? 'Lüften nicht möglich' : 'keine'; $('kwarn').className = s.kw ? 'warn' : '';
+  $('ez').textContent = s.ea ? (s.en ? 'EIN' : 'AUS') : 'deaktiviert';
+  $('ehw').textContent = s.eh || (s.ea ? 'keiner' : '–'); $('ehw').className = s.eh ? 'warn' : '';
+  $('tb').textContent = f(s.tb, '°C');
+  $('bwp').textContent = s.tb === null ? 'kein Fühler' : (s.bl ? 'läuft' : 'aus');
+  $('zeit').textContent = s.z;
+  $('ver').textContent = s.v;
+}
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>
