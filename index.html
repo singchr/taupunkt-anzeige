@@ -23,6 +23,7 @@ h1{font-size:1.25rem;text-align:center;margin:4px 0 12px}h2{font-size:1rem;margi
 .row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:3px 0}
 .badge{padding:2px 10px;border-radius:99px;font-weight:600;color:#fff}
 .on{background:#2e9e5b}.off{background:#8a949e}
+.b_AUTO{background:#2e9e5b}.b_HAND{background:#e0b020;color:#1b1f23}.b_AUS{background:#8b1e1e}
 .warn{color:#ff8a8a}.ok{color:#6fd39a}
 button{background:#2f6fd0;color:#fff;cursor:pointer;padding:10px 16px;border:0;border-radius:8px;font-size:1rem;width:100%}
 button:disabled{opacity:.4;cursor:default}
@@ -44,10 +45,10 @@ small{display:block;text-align:center;color:var(--muted);margin-top:8px}
 <div id="hinweise"></div>
 <div class="card"><h2>Status</h2>
 <div class="row"><span>Funktion</span><b id="funk">–</b></div>
-<div class="row"><span>Betriebsart</span><b id="modus">–</b></div>
+<div class="row"><span>Betriebsart</span><span id="modus" class="badge off">–</span></div>
 <div class="row"><span>Ablauf</span><b id="ablauf">–</b></div>
 <div class="row"><span>Lüfter</span><span id="fan" class="badge off">–</span></div>
-<div class="row"><span>Fenster</span><b id="fenster">–</b></div>
+<div class="row"><span>Fenster</span><span id="fenster" class="badge off">–</span></div>
 <div class="row"><span>Pause</span><b id="pause">–</b></div>
 <div class="row"><span>Taupunktdifferenz</span><b id="diff">–</b></div></div>
 <div class="card"><h2>Innen</h2>
@@ -167,10 +168,12 @@ function anzeigen(s) {
 
   $('funk').textContent = s.fk ? 'BWP' : 'Taupunktlüftung';
   $('modus').textContent = s.m;
+  $('modus').className = 'badge b_' + s.m;   // Farbe wie LED 2 an der Zentrale
   $('ablauf').textContent = s.a;
   $('fan').textContent = s.lu ? 'EIN' : 'AUS';
   $('fan').className = 'badge ' + (s.lu ? 'on' : 'off');
   $('fenster').textContent = s.fo ? 'offen' : 'geschlossen';
+  $('fenster').className = 'badge ' + (s.fo ? 'on' : 'off');
   $('pause').textContent = s.pr > 0 ? 'bis ' + (s.p || '?') + ' (noch ' + s.pr + ' min)' : 'keine';
   $('diff').textContent = f(s.dd, '°C');
   $('ti').textContent = f(s.ti, '°C'); $('hi').textContent = f(s.hi, '%');

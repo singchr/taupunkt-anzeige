@@ -1,6 +1,6 @@
 // Offline-Speicher für die Taupunkt-Anzeige: Seite einmal online laden, danach ohne Internet nutzbar.
 // Bei einer neuen Version der Seite die Nummer erhöhen.
-const CACHE = 'taupunkt-anzeige-v1';
+const CACHE = 'taupunkt-anzeige-v2';
 const DATEIEN = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', e => {
